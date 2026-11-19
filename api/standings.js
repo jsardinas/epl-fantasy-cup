@@ -52,6 +52,8 @@ export default async function handler(req, res) {
     // Bonus points are not stored yet, so they are reported as 0.
     const teams = await sql`
       select t.id, t.name, t.manager,
+             coalesce(t.cups, 0)::int as cups,
+             coalesce(t.leagues, 0)::int as leagues,
              coalesce(sum(p.points), 0)::int as points,
              coalesce(max(p.points), 0)::int as high,
              0 as bonus,
@@ -63,7 +65,7 @@ export default async function handler(req, res) {
        and p.season_id = ${cup.season_id}
        and p.game_week between ${gwFrom} and ${gwTo}
       where g.cup_id = ${cupId}
-      group by t.id, t.name, t.manager
+      group by t.id, t.name, t.manager, t.cups, t.leagues
       order by t.id`;
 
     // Per-team, per-game-week points for every knockout game week: { teamId: { gw: points } }.

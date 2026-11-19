@@ -25,6 +25,7 @@
   --win: #e7edfd;
   --head-blue: #1f4fd1; --head-blue-soft: #dde6fc;
   --head-red: #c0262d; --head-red-soft: #fbe0e1;
+  --cup: #b07d0a; --league: #2f5bea;
   --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -35,6 +36,7 @@
     --ga: #4fd1c1; --ga-soft: #12352f; --gb: #f2b54a; --gb-soft: #3a2c10; --gc: #b39bff; --gc-soft: #2a2148;
     --warn: #ff9a76; --warn-soft: #3d2016; --win: #1f2d4d;
     --head-blue: #8aa8ff; --head-blue-soft: #1c2b52; --head-red: #ff8f8f; --head-red-soft: #43191c;
+    --cup: #f2c14e; --league: #8aa8ff;
     color-scheme: dark;
   }
 }
@@ -44,6 +46,7 @@
   --ga: #4fd1c1; --ga-soft: #12352f; --gb: #f2b54a; --gb-soft: #3a2c10; --gc: #b39bff; --gc-soft: #2a2148;
   --warn: #ff9a76; --warn-soft: #3d2016; --win: #1f2d4d;
   --head-blue: #8aa8ff; --head-blue-soft: #1c2b52; --head-red: #ff8f8f; --head-red-soft: #43191c;
+  --cup: #f2c14e; --league: #8aa8ff;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -103,6 +106,17 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
 .tag { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
 .tag.yes { background: var(--g-soft); color: var(--g); }
 .tag.tie { background: var(--warn-soft); color: var(--warn); }
+
+/* Honours: cups and leagues won, shown next to team names.
+   inline-flex keeps them clear of the line-through on eliminated teams. */
+.honors { display: inline-flex; gap: 6px; margin-left: 6px; vertical-align: -2px; font-family: var(--font-body); font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: 0; text-transform: none; white-space: nowrap; }
+.honors .h { display: inline-flex; align-items: center; gap: 2px; }
+.honors svg { width: 14px; height: 14px; flex: none; }
+.h-cup { color: var(--cup); }
+.h-league { color: var(--league); }
+.champ .honors { font-size: 14px; vertical-align: 3px; }
+.champ .honors svg { width: 20px; height: 20px; }
+.champ .honors .h { color: inherit; }
 
 /* Qualifier summary */
 .summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
@@ -213,7 +227,10 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
     const out = {};
     G.forEach(g => out[g] = groupIds[g].map(id => {
       const t = byId[id];
-      return { id, name: t ? t.name : `Team ${id}`, pts: t ? t.points : 0, hs: t ? t.high : 0, bp: t ? t.bonus : 0 };
+      return {
+        id, name: t ? t.name : `Team ${id}`, pts: t ? t.points : 0, hs: t ? t.high : 0, bp: t ? t.bonus : 0,
+        cups: t ? t.cups || 0 : 0, leagues: t ? t.leagues || 0 : 0,
+      };
     }));
     return out;
   };
@@ -226,6 +243,19 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
   const cmp = (a, b) => (num(b.pts) - num(a.pts)) || (num(b.hs) - num(a.hs)) || (num(b.bp) - num(a.bp));
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // Honours (teams.cups / teams.leagues): a cup and a shield with counts, hidden when 0.
+  const ICON_CUP = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 3h10v5a5 5 0 0 1-10 0V3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M7 5H4.5a3 3 0 0 0 3 4.5M17 5h2.5a3 3 0 0 1-3 4.5M12 13v3"/><path fill="currentColor" d="M8 16h8v3H8z"/></svg>`;
+  const ICON_SHIELD = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l8 3v6c0 5-3.4 9-8 11-4.6-2-8-6-8-11V5l8-3z"/></svg>`;
+  const won = (n, what) => `${n} ${what}${n === 1 ? "" : "s"} won`;
+  function honorsHTML(p) {
+    if (!p) return "";
+    const cups = num(p.cups), leagues = num(p.leagues);
+    const parts = [];
+    if (cups > 0) parts.push(`<span class="h h-cup" role="img" aria-label="${won(cups, "cup")}" title="${won(cups, "cup")}">${ICON_CUP}${cups}</span>`);
+    if (leagues > 0) parts.push(`<span class="h h-league" role="img" aria-label="${won(leagues, "league")}" title="${won(leagues, "league")}">${ICON_SHIELD}${leagues}</span>`);
+    return parts.length ? `<span class="honors">${parts.join("")}</span>` : "";
+  }
 
   function standings(g) {
     const rows = state.groups[g].map((r, i) => ({ ...r, i, group: g }));
@@ -311,7 +341,7 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
     const res = m.winner ? (m.winner === p ? "won" : "lost") : "";
     const pending = m.pending ? "pending" : "";
     return `<div class="slot g-${p.group} ${res} ${pending}"><span class="bar"></span>
-      <span class="who"><b>${esc(p.label)}</b><span>${POS[p.pos]} · Group ${p.group}${m.pending ? " · not confirmed" : ""}</span></span>${scoresHTML(m, p)}</div>`;
+      <span class="who"><b>${esc(p.label)}${honorsHTML(p)}</b><span>${POS[p.pos]} · Group ${p.group}${m.pending ? " · not confirmed" : ""}</span></span>${scoresHTML(m, p)}</div>`;
   }
   function matchHTML(m, title) {
     const gwHead = roundWeeks(m).map(gw => `<span class="leg">GW${gw}</span>`).join("");
@@ -328,7 +358,7 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
       document.getElementById(`body-${g}`).innerHTML = d.table[g].map(r => `
         <tr class="${inBracket.has(keyOf(r)) ? "q" : "out"}">
           <td><span class="pos">${r.pos + 1}</span></td>
-          <td class="nmc">${esc(r.label)}${r.tied ? ` <span class="tag tie" title="Tied on points, highest score and bonus points. List order breaks the tie.">tied</span>` : ""}</td>
+          <td class="nmc">${esc(r.label)}${honorsHTML(r)}${r.tied ? ` <span class="tag tie" title="Tied on points, highest score and bonus points. List order breaks the tie.">tied</span>` : ""}</td>
           <td class="n">${num(r.pts)}</td>
           <td class="n">${num(r.hs)}</td>
           <td class="n">${num(r.bp)}</td>
@@ -341,7 +371,7 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
     document.getElementById("thirds-body").innerHTML = d.thirds.map((t, k) => `
       <tr class="${k < 2 ? "q" : "out"}">
         <td><span class="pos">${k + 1}</span></td>
-        <td class="nmc">${esc(t.label)} <span class="tag yes g-${t.group}">Group ${t.group}</span></td>
+        <td class="nmc">${esc(t.label)}${honorsHTML(t)} <span class="tag yes g-${t.group}">Group ${t.group}</span></td>
         <td class="n">${num(t.pts)}</td>
         <td class="n">${num(t.hs)}</td>
         <td class="n">${num(t.bp)}</td>
@@ -381,7 +411,7 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
       <div class="col"><div class="col-head">Final</div><div class="col-body">${matchHTML(fin, "Final")}</div></div>
       <div class="col"><div class="col-head">Champion</div><div class="col-body">
         <div class="champ ${champ ? "" : "empty"}"><div class="lbl">${champ ? `Group ${champ.group} · ${POS[champ.pos]}` : "To be decided"}</div>
-        <div class="nm">${champ ? esc(champ.label) : "?"}</div></div>
+        <div class="nm">${champ ? esc(champ.label) + honorsHTML(champ) : "?"}</div></div>
       </div></div>`;
 
   }
