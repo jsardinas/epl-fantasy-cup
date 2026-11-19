@@ -39,7 +39,8 @@ export default async function handler(req, res) {
       group by t.id, t.name, t.manager
       order by t.id`;
 
-    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+    // Short edge cache only: DB edits (e.g. cups settings) show up within a minute.
+    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
     return res.status(200).json({
       cup: { id: cup.id, name: cup.name, seasonId: cup.season_id, gwFrom, gwTo, legs: cup.qualifier_legs },
       teams,
