@@ -248,12 +248,19 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   const ICON_CUP = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 3h10v5a5 5 0 0 1-10 0V3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M7 5H4.5a3 3 0 0 0 3 4.5M17 5h2.5a3 3 0 0 1-3 4.5M12 13v3"/><path fill="currentColor" d="M8 16h8v3H8z"/></svg>`;
   const ICON_SHIELD = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l8 3v6c0 5-3.4 9-8 11-4.6-2-8-6-8-11V5l8-3z"/></svg>`;
   const won = (n, what) => `${n} ${what}${n === 1 ? "" : "s"} won`;
+  // Up to 3 the icon is repeated; above that it's one icon followed by the number.
+  const MAX_REPEAT = 3;
+  function honorBadge(n, icon, cls, what) {
+    if (n <= 0) return "";
+    const body = n <= MAX_REPEAT ? icon.repeat(n) : `${icon}${n}`;
+    return `<span class="h ${cls}" role="img" aria-label="${won(n, what)}" title="${won(n, what)}">${body}</span>`;
+  }
   function honorsHTML(p) {
     if (!p) return "";
-    const cups = num(p.cups), leagues = num(p.leagues);
-    const parts = [];
-    if (cups > 0) parts.push(`<span class="h h-cup" role="img" aria-label="${won(cups, "cup")}" title="${won(cups, "cup")}">${ICON_CUP}${cups}</span>`);
-    if (leagues > 0) parts.push(`<span class="h h-league" role="img" aria-label="${won(leagues, "league")}" title="${won(leagues, "league")}">${ICON_SHIELD}${leagues}</span>`);
+    const parts = [
+      honorBadge(num(p.cups), ICON_CUP, "h-cup", "cup"),
+      honorBadge(num(p.leagues), ICON_SHIELD, "h-league", "league"),
+    ].filter(Boolean);
     return parts.length ? `<span class="honors">${parts.join("")}</span>` : "";
   }
 
