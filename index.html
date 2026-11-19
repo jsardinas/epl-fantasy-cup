@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Friends Cup Knockout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: groups entry strip on top, qualifier summary, then a left-to-right bracket board color-coded by group */
+:root {
+  --bg: #eef1f5;
+  --surface: #ffffff;
+  --ink: #142036;
+  --muted: #5d6a80;
+  --line: #d5dbe5;
+  --accent: #2f5bea;
+  --accent-ink: #ffffff;
+  --ga: #0f8a7e; --ga-soft: #dcf2ef;
+  --gb: #c27a06; --gb-soft: #fbedd3;
+  --gc: #7a4fd6; --gc-soft: #ece4fb;
+  --warn: #b4401c; --warn-soft: #fbe5dc;
+  --win: #e7edfd;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1522; --surface: #172133; --ink: #e8edf6; --muted: #98a4ba; --line: #2b3850;
+    --accent: #7c9bff; --accent-ink: #0e1522;
+    --ga: #4fd1c1; --ga-soft: #12352f; --gb: #f2b54a; --gb-soft: #3a2c10; --gc: #b39bff; --gc-soft: #2a2148;
+    --warn: #ff9a76; --warn-soft: #3d2016; --win: #1f2d4d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1522; --surface: #172133; --ink: #e8edf6; --muted: #98a4ba; --line: #2b3850;
+  --accent: #7c9bff; --accent-ink: #0e1522;
+  --ga: #4fd1c1; --ga-soft: #12352f; --gb: #f2b54a; --gb-soft: #3a2c10; --gc: #b39bff; --gc-soft: #2a2148;
+  --warn: #ff9a76; --warn-soft: #3d2016; --win: #1f2d4d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+h1, h2 { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h1 { font-size: 2.6rem; line-height: 1; font-weight: 800; }
+h2 { font-size: 1.5rem; font-weight: 700; }
+.lede { color: var(--muted); max-width: 62ch; margin: 8px 0 0; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button { font: inherit; cursor: pointer; }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 7px 12px; border-radius: 8px; font-weight: 500; }
+.btn:hover { border-color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pill { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); }
+.section-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+
+/* Groups */
+.groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .groups { grid-template-columns: 1fr; } }
+.group { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+.group-title { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; text-transform: uppercase; letter-spacing: .03em; padding: 8px 14px; color: var(--g); background: var(--g-soft); display: flex; justify-content: space-between; align-items: center; }
+.group-title small { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--muted); }
+.g-A { --g: var(--ga); --g-soft: var(--ga-soft); }
+.g-B { --g: var(--gb); --g-soft: var(--gb-soft); }
+.g-C { --g: var(--gc); --g-soft: var(--gc-soft); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; text-align: left; padding: 6px 4px; }
+th.n, td.n { text-align: center; width: 54px; }
+td { padding: 3px 4px; border-top: 1px solid var(--line); }
+td:first-child, th:first-child { padding-left: 12px; width: 28px; }
+td:last-child, th:last-child { padding-right: 10px; }
+.pos { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: var(--muted); }
+tr.q .pos { color: var(--g); }
+tr.out td { opacity: .55; }
+input[type="text"], input[type="number"] {
+  width: 100%; font: inherit; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 5px 6px;
+}
+input[type="number"] { text-align: center; -moz-appearance: textfield; }
+input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input:hover { border-color: var(--line); }
+input:focus { border-color: var(--accent); outline: none; background: var(--bg); }
+.tag { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+.tag.yes { background: var(--g-soft); color: var(--g); }
+.tag.tie { background: var(--warn-soft); color: var(--warn); }
+
+/* Qualifier summary */
+.summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .summary { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.panel h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.rank-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rank-list li { display: flex; align-items: center; gap: 10px; font-variant-numeric: tabular-nums; }
+.rank-list .r { font-family: var(--font-display); font-weight: 700; width: 22px; color: var(--muted); }
+.rank-list .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.rank-list .st { color: var(--muted); font-size: 12px; }
+.rank-list li.cut { opacity: .5; text-decoration: line-through; }
+.toggle { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; color: var(--muted); font-size: 13px; }
+.toggle input { margin-top: 3px; accent-color: var(--accent); }
+
+/* Bracket */
+.board-scroll { overflow-x: auto; padding-bottom: 6px; }
+.board { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)) minmax(170px, .8fr); gap: 28px; min-width: 860px; }
+.col { display: flex; flex-direction: column; }
+.col-head { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-size: 1rem; margin-bottom: 10px; }
+.col-body { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 16px; }
+.half-label { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 4px 0 -8px; }
+.match { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.match-id { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 5px 10px 3px; display: flex; justify-content: space-between; }
+.slot { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--ink); padding: 8px 10px; min-height: 42px; }
+.slot:not(:disabled):hover { background: var(--bg); }
+.slot:disabled { cursor: default; color: var(--muted); }
+.slot .bar { width: 4px; align-self: stretch; border-radius: 2px; background: var(--g, var(--line)); flex: none; }
+.slot .who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.slot .who b { font-weight: 600; overflow-wrap: anywhere; }
+.slot .who span { font-size: 11px; color: var(--muted); letter-spacing: .02em; }
+.slot.won { background: var(--win); }
+.slot.won .check { opacity: 1; }
+.slot.lost .who b { text-decoration: line-through; opacity: .55; }
+.check { opacity: 0; font-weight: 700; color: var(--accent); flex: none; }
+.champ { background: var(--accent); color: var(--accent-ink); border-radius: 12px; padding: 18px 16px; text-align: center; }
+.champ .lbl { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+.champ .nm { font-family: var(--font-display); font-weight: 800; font-size: 2rem; line-height: 1.05; text-transform: uppercase; margin-top: 6px; overflow-wrap: anywhere; }
+.champ.empty { background: var(--surface); color: var(--muted); border: 1px dashed var(--line); }
+
+/* Separation check */
+.checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+@media (max-width: 760px) { .checks { grid-template-columns: 1fr; } }
+.checks .panel { border-left: 4px solid var(--g); }
+.checks ul { margin: 0; padding-left: 18px; }
+.checks li { margin: 2px 0; }
+.ok { color: var(--g); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--g); margin-right: 5px; vertical-align: -1px; }
+@media (prefers-reduced-motion: no-preference) { .slot { transition: background .15s; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Friends Cup Knockout</h1>
+      <p class="lede">Type each group's final table. The top two of every group and the two best thirds go through, and the bracket fills itself in. Players from the same group can only meet in the final, and group winners never play each other in the quarterfinals.</p>
+    </div>
+    <div class="controls">
+      <span class="pill" id="sample-pill">Example data</span>
+      <button class="btn" id="btn-clear" type="button">Clear all</button>
+      <button class="btn" id="btn-sample" type="button">Load example</button>
+    </div>
+  </header>
+
+  <section>
+    <div class="section-head">
+      <h2>Group results</h2>
+      <p class="hint">Ranked by points, then goal difference, then goals scored. If players are still tied, the one higher in your list goes first.</p>
+    </div>
+    <div class="groups" id="groups"></div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Who goes through</h2></div>
+    <div class="summary">
+      <div class="panel">
+        <h3>Third-place ranking</h3>
+        <ol class="rank-list" id="thirds"></ol>
+      </div>
+      <div class="panel">
+        <h3>Group winners ranking</h3>
+        <ol class="rank-list" id="winners"></ol>
+        <label class="toggle"><input type="checkbox" id="rank-winners" checked>
+          <span>Give the two best group winners the third-place opponents. The weakest winner plays a runner-up instead. Turn this off to use the fixed layout: 1st A and 1st B play the thirds.</span></label>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Bracket</h2>
+      <div class="legend"><span class="g-A"><i></i>Group A</span><span class="g-B"><i></i>Group B</span><span class="g-C"><i></i>Group C</span><span>Click a player to send them through.</span></div>
+    </div>
+    <div class="board-scroll"><div class="board" id="board"></div></div>
+    <div class="checks" id="checks"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const G = ["A", "B", "C"];
+  const POS = ["1st", "2nd", "3rd", "4th"];
+  const SAMPLE = {
+    A: [["Marta", 7, 4, 6], ["Leo", 6, 2, 5], ["Dani", 4, -1, 3], ["Sofi", 0, -5, 1]],
+    B: [["Pablo", 9, 6, 8], ["Ines", 4, 0, 4], ["Tomas", 4, -1, 2], ["Clara", 0, -5, 2]],
+    C: [["Nico", 6, 3, 5], ["Lucia", 6, 2, 4], ["Javi", 3, -1, 3], ["Ana", 3, -4, 2]]
+  };
+  const KEY = "friends-cup-knockout-v1";
+
+  let state;
+  function fromSample() {
+    const groups = {};
+    G.forEach(g => groups[g] = SAMPLE[g].map(([name, pts, gd, gf]) => ({ name, pts, gd, gf })));
+    return { groups, rankWinners: true, picks: {}, sample: true };
+  }
+  function blank() {
+    const groups = {};
+    G.forEach(g => groups[g] = [0, 1, 2, 3].map(() => ({ name: "", pts: "", gd: "", gf: "" })));
+    return { groups, rankWinners: true, picks: {}, sample: false };
+  }
+  try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+  if (!state || !state.groups) state = fromSample();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+  const cmp = (a, b) => (num(b.pts) - num(a.pts)) || (num(b.gd) - num(a.gd)) || (num(b.gf) - num(a.gf));
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function standings(g) {
+    const rows = state.groups[g].map((r, i) => ({ ...r, i, group: g }));
+    rows.sort((a, b) => cmp(a, b) || a.i - b.i);
+    rows.forEach((r, p) => {
+      r.pos = p;
+      r.label = r.name.trim() || `${POS[p]} Group ${g}`;
+      r.tied = rows.some(o => o !== r && cmp(o, r) === 0);
+    });
+    return rows;
+  }
+
+  // ---------- Group entry tables (built once; values updated in place) ----------
+  const groupsEl = document.getElementById("groups");
+  groupsEl.innerHTML = G.map(g => `
+    <div class="group g-${g}">
+      <div class="group-title">Group ${g}<small id="gstat-${g}"></small></div>
+      <table>
+        <thead><tr><th></th><th>Player</th><th class="n">Pts</th><th class="n">+/-</th><th class="n">Scored</th></tr></thead>
+        <tbody>${[0,1,2,3].map(i => `
+          <tr id="row-${g}-${i}">
+            <td><span class="pos" id="pos-${g}-${i}"></span></td>
+            <td><input type="text" id="in-${g}-${i}-name" data-g="${g}" data-i="${i}" data-f="name" placeholder="Player ${i+1}" aria-label="Group ${g} player ${i+1} name"><span id="tag-${g}-${i}"></span></td>
+            <td class="n"><input type="number" id="in-${g}-${i}-pts" data-g="${g}" data-i="${i}" data-f="pts" aria-label="Points"></td>
+            <td class="n"><input type="number" id="in-${g}-${i}-gd" data-g="${g}" data-i="${i}" data-f="gd" aria-label="Goal difference"></td>
+            <td class="n"><input type="number" id="in-${g}-${i}-gf" data-g="${g}" data-i="${i}" data-f="gf" aria-label="Goals scored"></td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`).join("");
+
+  function fillInputs() {
+    G.forEach(g => state.groups[g].forEach((r, i) => {
+      ["name", "pts", "gd", "gf"].forEach(f => { document.getElementById(`in-${g}-${i}-${f}`).value = r[f]; });
+    }));
+    document.getElementById("rank-winners").checked = !!state.rankWinners;
+  }
+
+  groupsEl.addEventListener("input", e => {
+    const t = e.target; if (!t.dataset.f) return;
+    state.groups[t.dataset.g][+t.dataset.i][t.dataset.f] = t.value;
+    state.sample = false;
+    render();
+  });
+  document.getElementById("rank-winners").addEventListener("change", e => { state.rankWinners = e.target.checked; render(); });
+  document.getElementById("btn-clear").addEventListener("click", () => { state = blank(); fillInputs(); render(); });
+  document.getElementById("btn-sample").addEventListener("click", () => { state = fromSample(); fillInputs(); render(); });
+
+  // ---------- Draw logic ----------
+  function draw() {
+    const table = {}; G.forEach(g => table[g] = standings(g));
+    const winners = G.map(g => table[g][0]).sort((a, b) => cmp(a, b) || G.indexOf(a.group) - G.indexOf(b.group));
+    // Slot letters: X = best winner's group, Y = second best, Z = weakest (or fixed A/B/C)
+    const letter = {};
+    if (state.rankWinners) winners.forEach((w, k) => letter["XYZ"[k]] = w.group);
+    else { letter.X = "A"; letter.Y = "B"; letter.Z = "C"; }
+    const thirds = G.map(g => table[g][2]).sort((a, b) => cmp(a, b) || G.indexOf(a.group) - G.indexOf(b.group));
+    const q3 = thirds.slice(0, 2);
+    const has = L => q3.some(t => t.group === letter[L]);
+    let tX, tY; // tX plays 1st X, tY plays 1st Y
+    const third = L => table[letter[L]][2];
+    if (has("X") && has("Y")) { tX = third("Y"); tY = third("X"); }
+    else if (has("X") && has("Z")) { tX = third("Z"); tY = third("X"); }
+    else { tX = third("Y"); tY = third("Z"); }
+    const P = (L, p) => table[letter[L]][p];
+    const qf = [
+      { id: "qf1", a: P("X", 0), b: tX },
+      { id: "qf2", a: P("Z", 0), b: P("Y", 1) },
+      { id: "qf3", a: P("Y", 0), b: tY },
+      { id: "qf4", a: P("X", 1), b: P("Z", 1) }
+    ];
+    return { table, winners, thirds, q3, qf };
+  }
+
+  const keyOf = p => p ? `${p.group}${p.pos}` : null;
+
+  function slotHTML(m, side, p) {
+    if (!p) return `<button class="slot" type="button" disabled><span class="bar"></span><span class="who"><b>Winner of ${m.from[side]}</b><span>to be decided</span></span></button>`;
+    const pick = state.picks[m.id];
+    const cls = pick ? (pick === keyOf(p) ? "won" : "lost") : "";
+    const ready = m.a && m.b;
+    return `<button class="slot g-${p.group} ${cls}" type="button" data-m="${m.id}" data-k="${keyOf(p)}" ${ready ? "" : "disabled"}
+      aria-pressed="${pick === keyOf(p)}"><span class="bar"></span>
+      <span class="who"><b>${esc(p.label)}</b><span>${POS[p.pos]} · Group ${p.group}</span></span><span class="check">✓</span></button>`;
+  }
+  function matchHTML(m, title) {
+    return `<div class="match"><div class="match-id"><span>${title}</span></div>${slotHTML(m, 0, m.a)}${slotHTML(m, 1, m.b)}</div>`;
+  }
+
+  function render() {
+    save();
+    document.getElementById("sample-pill").hidden = !state.sample;
+    const d = draw();
+    const inBracket = new Set(d.qf.flatMap(m => [keyOf(m.a), keyOf(m.b)]));
+
+    // group tables
+    G.forEach(g => {
+      d.table[g].forEach(r => {
+        const i = r.i;
+        const row = document.getElementById(`row-${g}-${i}`);
+        const q = inBracket.has(keyOf(r));
+        row.className = q ? "q" : (r.pos === 3 || r.pos === 2 ? "out" : "");
+        document.getElementById(`pos-${g}-${i}`).textContent = r.pos + 1;
+        document.getElementById(`tag-${g}-${i}`).innerHTML =
+          (r.tied ? `<span class="tag tie" title="Tied on points, +/- and scored. List order breaks the tie.">tied</span>` : "");
+      });
+      const n = d.table[g].filter(r => inBracket.has(keyOf(r))).length;
+      document.getElementById(`gstat-${g}`).textContent = `${n} through`;
+    });
+
+    // rankings
+    document.getElementById("thirds").innerHTML = d.thirds.map((t, k) => `
+      <li class="g-${t.group} ${k > 1 ? "cut" : ""}"><span class="r">${k + 1}</span>
+      <span class="nm">${esc(t.label)} <span class="tag yes">Group ${t.group}</span></span>
+      <span class="st">${num(t.pts)} pts · ${num(t.gd) > 0 ? "+" : ""}${num(t.gd)} · ${num(t.gf)} scored</span></li>`).join("");
+    document.getElementById("winners").innerHTML = d.winners.map((w, k) => `
+      <li class="g-${w.group}"><span class="r">${k + 1}</span>
+      <span class="nm">${esc(w.label)} <span class="tag yes">Group ${w.group}</span></span>
+      <span class="st">${num(w.pts)} pts · ${num(w.gd) > 0 ? "+" : ""}${num(w.gd)}</span></li>`).join("");
+
+    // bracket progression
+    const all = {};
+    d.qf.forEach(m => { all[keyOf(m.a)] = m.a; all[keyOf(m.b)] = m.b; });
+    const winnerOf = m => {
+      const k = state.picks[m.id];
+      if (!m.a || !m.b) { delete state.picks[m.id]; return null; }
+      if (k !== keyOf(m.a) && k !== keyOf(m.b)) { delete state.picks[m.id]; return null; }
+      return all[k];
+    };
+    d.qf.forEach(m => m.from = ["", ""]);
+    const w = d.qf.map(winnerOf);
+    const sf1 = { id: "sf1", a: w[0], b: w[1], from: ["QF1", "QF2"] };
+    const sf2 = { id: "sf2", a: w[2], b: w[3], from: ["QF3", "QF4"] };
+    const fin = { id: "final", a: winnerOf(sf1), b: winnerOf(sf2), from: ["SF1", "SF2"] };
+    const champ = winnerOf(fin);
+    save();
+
+    const titles = ["QF1", "QF2", "QF3", "QF4"];
+    document.getElementById("board").innerHTML = `
+      <div class="col"><div class="col-head">Quarterfinals</div><div class="col-body">
+        <div class="half-label">Top half</div>${matchHTML(d.qf[0], "QF1")}${matchHTML(d.qf[1], "QF2")}
+        <div class="half-label">Bottom half</div>${matchHTML(d.qf[2], "QF3")}${matchHTML(d.qf[3], "QF4")}
+      </div></div>
+      <div class="col"><div class="col-head">Semifinals</div><div class="col-body">
+        ${matchHTML(sf1, "SF1 · top half")}${matchHTML(sf2, "SF2 · bottom half")}
+      </div></div>
+      <div class="col"><div class="col-head">Final</div><div class="col-body">${matchHTML(fin, "Final")}</div></div>
+      <div class="col"><div class="col-head">Champion</div><div class="col-body">
+        <div class="champ ${champ ? "" : "empty"}"><div class="lbl">${champ ? `Group ${champ.group} · ${POS[champ.pos]}` : "Pick the final winner"}</div>
+        <div class="nm">${champ ? esc(champ.label) : "?"}</div></div>
+      </div></div>`;
+
+    // separation check: bracket positions 0..7
+    const order = d.qf.flatMap(m => [m.a, m.b]);
+    const round = (i, j) => (i >> 1) === (j >> 1) ? "quarterfinal" : (i >> 2) === (j >> 2) ? "semifinal" : "final";
+    document.getElementById("checks").innerHTML = G.map(g => {
+      const idx = order.map((p, i) => p.group === g ? i : -1).filter(i => i >= 0);
+      const lines = [];
+      for (let a = 0; a < idx.length; a++) for (let b = a + 1; b < idx.length; b++) {
+        const r = round(idx[a], idx[b]);
+        lines.push(`<li>${esc(order[idx[a]].label)} and ${esc(order[idx[b]].label)}: ${r === "final" ? `<span class="ok">only in the final</span>` : `earliest in the ${r}`}</li>`);
+      }
+      return `<div class="panel g-${g}"><h3>Group ${g} · ${idx.length} through</h3><ul>${lines.join("")}</ul></div>`;
+    }).join("");
+  }
+
+  document.getElementById("board").addEventListener("click", e => {
+    const b = e.target.closest(".slot[data-m]"); if (!b || b.disabled) return;
+    const id = b.dataset.m, k = b.dataset.k;
+    state.picks[id] = state.picks[id] === k ? undefined : k;
+    if (!state.picks[id]) delete state.picks[id];
+    render();
+  });
+
+  fillInputs();
+  render();
+})();
+</script>
+</body>
+</html>
