@@ -194,16 +194,10 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   const G = ["A", "B", "C"];
   const POS = ["1st", "2nd", "3rd", "4th"];
   // =====================================================================
-  //  CUP + GROUPS - points come live from /api/standings (Neon).
-  //  Groups list team ids from the `teams` table (to move into the DB later).
-  //  Order inside a group only matters to break full ties.
+  //  CUP - everything (groups, points, rounds) comes from /api/standings (Neon).
+  //  Groups live in the cup_groups table; seed order breaks full ties.
   // =====================================================================
   const CUP_ID = 1;
-  const GROUPS = {
-    A: [1, 5, 2, 12],   // Los Repas, El Narra, Kingsbury Albion, FC José Marti
-    B: [4, 8, 9, 10],   // Real Banquillo C.F., El_Pantano913, Versalles Vendeta FC, Lo Astros de Houston
-    C: [11, 7, 6, 3],   // PapiBoris FC, Catenaccio Haram FC, AFC Richmond, MeetYourDaddy
-  };
   // =====================================================================
 
   // =====================================================================
@@ -214,16 +208,19 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   const RESULTS = { qf1: null, qf2: null, qf3: null, qf4: null, sf1: null, sf2: null, final: null };
   // =====================================================================
 
-  // Until data arrives, show each group's team ids with zeros.
-  const toGroups = byId => {
+  // Build each group's rows from the cup_groups ids (seed order) and the team totals.
+  const toGroups = (groupIds, byId) => {
     const out = {};
-    G.forEach(g => out[g] = GROUPS[g].map(id => {
+    G.forEach(g => out[g] = groupIds[g].map(id => {
       const t = byId[id];
       return { id, name: t ? t.name : `Team ${id}`, pts: t ? t.points : 0, hs: t ? t.high : 0, bp: t ? t.bonus : 0 };
     }));
     return out;
   };
-  const state = { groups: toGroups({}), ko: { rounds: {}, points: {} }, groupDone: false };
+  // The bracket rules need exactly groups A, B and C with 4 teams each.
+  const validGroups = groups => !!groups &&
+    Object.keys(groups).sort().join() === G.join() && G.every(g => groups[g].length === 4);
+  const state = { groups: null, ko: { rounds: {}, points: {} }, groupDone: false };
   const statusEl = document.getElementById("data-status");
 
   const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
@@ -394,21 +391,22 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
       const r = await fetch(`/api/standings?cup=${CUP_ID}`, { headers: { accept: "application/json" } });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      if (!validGroups(data.groups)) throw new Error("cup groups must be groups A, B and C with 4 teams each");
       const byId = {};
       data.teams.forEach(t => byId[t.id] = t);
-      state.groups = toGroups(byId);
+      state.groups = toGroups(data.groups, byId);
       if (data.knockout) state.ko = data.knockout;
       // Group stage is done once every cup team has points for all qualifier game weeks.
-      state.groupDone = G.every(g => GROUPS[g].every(id => byId[id] && byId[id].weeks >= data.cup.legs));
+      state.groupDone = G.every(g => data.groups[g].every(id => byId[id] && byId[id].weeks >= data.cup.legs));
       const c = data.cup;
       statusEl.textContent = `${c.name} · group phase: game weeks ${c.gwFrom}–${c.gwTo}`;
       render();
     } catch (e) {
-      statusEl.textContent = `Couldn't load standings (${e.message}). Showing zeros.`;
+      statusEl.textContent = `Couldn't load standings (${e.message}).`;
     }
   }
 
-  render();
+  // Nothing is rendered until the cup data arrives (groups come from the database).
   load();
 })();
 </script>
