@@ -16,12 +16,26 @@ export default async function handler(req, res) {
     const sql = neon(process.env.DATABASE_URL);
 
     const [cup] = await sql`
-      select id, btrim(name, E' \t\r\n') as name, season_id, qualifier_start, qualifier_legs
+      select id, btrim(name, E' \t\r\n') as name, season_id, qualifier_start, qualifier_legs,
+             quarter_final_start, quarter_final_legs, semi_final_start, semi_final_legs,
+             final_start, final_legs
       from cups where id = ${cupId}`;
     if (!cup) return res.status(404).json({ error: `Cup ${cupId} not found` });
 
     const gwFrom = cup.qualifier_start;
     const gwTo = cup.qualifier_start + cup.qualifier_legs - 1;
+
+    // Knockout rounds: each covers game weeks start .. start + legs - 1.
+    const round = (start, legs) => {
+      const s = Number(start), n = Math.max(0, Number(legs) || 0);
+      return Number.isInteger(s) ? { start: s, legs: n, gameWeeks: Array.from({ length: n }, (_, i) => s + i) } : null;
+    };
+    const rounds = {
+      qf: round(cup.quarter_final_start, cup.quarter_final_legs),
+      sf: round(cup.semi_final_start, cup.semi_final_legs),
+      final: round(cup.final_start, cup.final_legs),
+    };
+    const koWeeks = [...new Set(Object.values(rounds).flatMap(r => (r ? r.gameWeeks : [])))];
 
     // Left join so teams with no rows yet still appear with zeros.
     // Bonus points are not stored yet, so they are reported as 0.
@@ -40,10 +54,20 @@ export default async function handler(req, res) {
       order by t.id`;
 
     // Short edge cache only: DB edits (e.g. cups settings) show up within a minute.
+    // Per-team, per-game-week points for every knockout game week: { teamId: { gw: points } }.
+    const koRows = koWeeks.length
+      ? await sql`
+          select team_id, game_week, points from team_points
+          where season_id = ${cup.season_id} and game_week = any(${koWeeks})`
+      : [];
+    const koPoints = {};
+    for (const r of koRows) (koPoints[r.team_id] ||= {})[r.game_week] = r.points;
+
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
     return res.status(200).json({
       cup: { id: cup.id, name: cup.name, seasonId: cup.season_id, gwFrom, gwTo, legs: cup.qualifier_legs },
       teams,
+      knockout: { rounds, points: koPoints },
     });
   } catch (err) {
     console.error("standings query failed", err);

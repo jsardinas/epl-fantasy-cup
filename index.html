@@ -120,7 +120,7 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
 
 /* Bracket */
 .board-scroll { overflow-x: auto; padding-bottom: 6px; }
-.board { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)) minmax(170px, .8fr); gap: 28px; min-width: 860px; }
+.board { display: grid; grid-template-columns: repeat(3, minmax(270px, 1fr)) minmax(160px, .7fr); gap: 24px; min-width: 1000px; }
 .col { display: flex; flex-direction: column; }
 .col-head { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-size: 1rem; margin-bottom: 10px; }
 .col-body { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 16px; }
@@ -134,6 +134,11 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
 .slot .who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .slot .who b { font-weight: 600; overflow-wrap: anywhere; }
 .slot .who span { font-size: 11px; color: var(--muted); letter-spacing: .02em; }
+.score { display: flex; align-items: baseline; gap: 4px; flex: none; font-variant-numeric: tabular-nums; }
+.score .leg { width: 34px; text-align: right; font-size: 11px; color: var(--muted); }
+.score .tot { width: 40px; text-align: right; font-size: 15px; font-weight: 700; color: var(--ink); }
+.slot.pending .score .tot { color: var(--muted); }
+.match-id .score .leg, .match-id .score .tot { font-size: 10px; font-weight: 600; color: var(--muted); }
 .slot.won { background: var(--win); }
 .slot.won .check { opacity: 1; }
 .slot.lost .who b { text-decoration: line-through; opacity: .55; }
@@ -202,11 +207,10 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   // =====================================================================
 
   // =====================================================================
-  //  KNOCKOUT STATUS - placeholders until these come from the database.
-  //  GROUP_STAGE_DONE: false greys out the quarterfinal teams (not confirmed yet).
-  //  RESULTS: winner of each match by exact team name, or null if not played.
+  //  KNOCKOUT - winners are worked out from the database automatically.
+  //  RESULTS: optional manual override per match (exact team name), e.g. to
+  //  settle a match that is level on total, highest game week and bonus.
   // =====================================================================
-  const GROUP_STAGE_DONE = false;
   const RESULTS = { qf1: null, qf2: null, qf3: null, qf4: null, sf1: null, sf2: null, final: null };
   // =====================================================================
 
@@ -215,11 +219,11 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
     const out = {};
     G.forEach(g => out[g] = GROUPS[g].map(id => {
       const t = byId[id];
-      return { name: t ? t.name : `Team ${id}`, pts: t ? t.points : 0, hs: t ? t.high : 0, bp: t ? t.bonus : 0 };
+      return { id, name: t ? t.name : `Team ${id}`, pts: t ? t.points : 0, hs: t ? t.high : 0, bp: t ? t.bonus : 0 };
     }));
     return out;
   };
-  const state = { groups: toGroups({}) };
+  const state = { groups: toGroups({}), ko: { rounds: {}, points: {} }, groupDone: false };
   const statusEl = document.getElementById("data-status");
 
   const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
@@ -283,15 +287,39 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
 
   const keyOf = p => p ? `${p.group}${p.pos}` : null;
 
+  // Game weeks for a round (from the cups table) and a team's points in them.
+  const roundWeeks = m => (state.ko.rounds[m.round] || {}).gameWeeks || [];
+  function teamRound(m, p) {
+    const weeks = roundWeeks(m);
+    const pts = p ? (state.ko.points[p.id] || {}) : {};
+    const vals = weeks.map(gw => pts[gw]);
+    const have = vals.filter(v => v != null);
+    return {
+      vals,
+      total: have.reduce((s, v) => s + v, 0),
+      high: have.length ? Math.max(...have) : 0,
+      bonus: 0, // knockout bonus points are not stored yet
+      any: have.length > 0,
+      complete: weeks.length > 0 && have.length === weeks.length,
+    };
+  }
+  function scoresHTML(m, p) {
+    const r = teamRound(m, p);
+    const legs = r.vals.map(v => `<span class="leg">${v != null ? v : "–"}</span>`).join("");
+    return `<span class="score">${legs}<span class="tot">${r.any ? r.total : "–"}</span></span>`;
+  }
+
   function slotHTML(m, side, p) {
-    if (!p) return `<div class="slot pending"><span class="bar"></span><span class="who"><b>Winner of ${m.from[side]}</b><span>to be decided</span></span></div>`;
+    if (!p) return `<div class="slot pending"><span class="bar"></span><span class="who"><b>Winner of ${m.from[side]}</b><span>to be decided</span></span>${scoresHTML(m, null)}</div>`;
     const res = m.winner ? (m.winner === p ? "won" : "lost") : "";
     const pending = m.pending ? "pending" : "";
     return `<div class="slot g-${p.group} ${res} ${pending}"><span class="bar"></span>
-      <span class="who"><b>${esc(p.label)}</b><span>${POS[p.pos]} · Group ${p.group}${m.pending ? " · not confirmed" : ""}</span></span><span class="check">✓</span></div>`;
+      <span class="who"><b>${esc(p.label)}</b><span>${POS[p.pos]} · Group ${p.group}${m.pending ? " · not confirmed" : ""}</span></span>${scoresHTML(m, p)}</div>`;
   }
   function matchHTML(m, title) {
-    return `<div class="match"><div class="match-id"><span>${title}</span></div>${slotHTML(m, 0, m.a)}${slotHTML(m, 1, m.b)}</div>`;
+    const gwHead = roundWeeks(m).map(gw => `<span class="leg">GW${gw}</span>`).join("");
+    const tie = m.tied ? ` <span class="tag tie" title="Level on total, highest game week and bonus. Set the winner in RESULTS.">tied</span>` : "";
+    return `<div class="match"><div class="match-id"><span>${title}${tie}</span><span class="score">${gwHead}<span class="tot">Total</span></span></div>${slotHTML(m, 0, m.a)}${slotHTML(m, 1, m.b)}</div>`;
   }
 
   function render() {
@@ -323,18 +351,26 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
       </tr>`).join("");
 
     // bracket progression
-    // Winners come from RESULTS (by team name); only counted once the match is set.
+    // A match is decided once both teams have points for every game week of its round:
+    // higher total wins, then highest single game week, then bonus points (0 until stored).
+    // A name in RESULTS overrides this (e.g. to settle a full tie by hand).
     const winnerOf = m => {
+      m.tied = false;
+      if (!m.a || !m.b || m.pending) return null;
       const name = RESULTS[m.id];
-      if (!name || !m.a || !m.b || m.pending) return null;
-      return [m.a, m.b].find(p => p.label === name) || null;
+      if (name) return [m.a, m.b].find(p => p.label === name) || null;
+      const a = teamRound(m, m.a), b = teamRound(m, m.b);
+      if (!a.complete || !b.complete) return null;
+      const diff = (a.total - b.total) || (a.high - b.high) || (a.bonus - b.bonus);
+      if (diff === 0) { m.tied = true; return null; }
+      return diff > 0 ? m.a : m.b;
     };
-    d.qf.forEach(m => { m.from = ["", ""]; m.pending = !GROUP_STAGE_DONE; m.winner = winnerOf(m); });
+    d.qf.forEach(m => { m.round = "qf"; m.from = ["", ""]; m.pending = !state.groupDone; m.winner = winnerOf(m); });
     const w = d.qf.map(m => m.winner);
-    const sf1 = { id: "sf1", a: w[0], b: w[1], from: ["QF1", "QF2"] };
-    const sf2 = { id: "sf2", a: w[2], b: w[3], from: ["QF3", "QF4"] };
+    const sf1 = { id: "sf1", round: "sf", a: w[0], b: w[1], from: ["QF1", "QF2"] };
+    const sf2 = { id: "sf2", round: "sf", a: w[2], b: w[3], from: ["QF3", "QF4"] };
     sf1.winner = winnerOf(sf1); sf2.winner = winnerOf(sf2);
-    const fin = { id: "final", a: sf1.winner, b: sf2.winner, from: ["SF1", "SF2"] };
+    const fin = { id: "final", round: "final", a: sf1.winner, b: sf2.winner, from: ["SF1", "SF2"] };
     const champ = fin.winner = winnerOf(fin);
 
     document.getElementById("board").innerHTML = `
@@ -361,6 +397,9 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
       const byId = {};
       data.teams.forEach(t => byId[t.id] = t);
       state.groups = toGroups(byId);
+      if (data.knockout) state.ko = data.knockout;
+      // Group stage is done once every cup team has points for all qualifier game weeks.
+      state.groupDone = G.every(g => GROUPS[g].every(id => byId[id] && byId[id].weeks >= data.cup.legs));
       const c = data.cup;
       statusEl.textContent = `${c.name} · group phase: game weeks ${c.gwFrom}–${c.gwTo}`;
       render();
