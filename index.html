@@ -140,6 +140,19 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
 .col-body { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 16px; }
 .half-label { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 4px 0 -8px; }
 .match { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+/* Narrow screens: stack rounds top to bottom (QF, SF, Final, Champion) instead of side-scrolling */
+@media (max-width: 700px) {
+  .board-scroll { overflow: visible; padding-bottom: 0; }
+  .board { grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 22px; }
+  .col-body { justify-content: flex-start; gap: 12px; }
+  .col-head { font-size: 1.1rem; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+  .half-label { margin: 2px 0 -4px; }
+  .slot { gap: 6px; padding: 8px; }
+  .score { gap: 2px; }
+  .score .leg { width: 28px; }
+  .score .tot { width: 36px; }
+  .champ .nm { font-size: 1.7rem; }
+}
 .match-id { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 5px 10px 3px; display: flex; justify-content: space-between; }
 .slot { display: flex; align-items: center; gap: 8px; width: 100%; border-top: 1px solid var(--line); color: var(--ink); padding: 8px 10px; min-height: 42px; }
 .slot.pending { color: var(--muted); }
