@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Copa de Invierno</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
@@ -90,6 +91,7 @@ td:first-child, th:first-child { padding-left: 12px; width: 28px; }
 td:last-child, th:last-child { padding-right: 10px; }
 .pos { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: var(--muted); }
 tr.q .pos { color: var(--g); }
+.group:not(.thirds-table) tr.q .pos { color: var(--head-blue); }
 tr.out td { opacity: .55; }
 input[type="text"], input[type="number"] {
   width: 100%; font: inherit; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 5px 6px;
@@ -125,10 +127,10 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
 .half-label { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 4px 0 -8px; }
 .match { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .match-id { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 5px 10px 3px; display: flex; justify-content: space-between; }
-.slot { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--ink); padding: 8px 10px; min-height: 42px; }
-.slot:not(:disabled):hover { background: var(--bg); }
-.slot:disabled { cursor: default; color: var(--muted); }
+.slot { display: flex; align-items: center; gap: 8px; width: 100%; border-top: 1px solid var(--line); color: var(--ink); padding: 8px 10px; min-height: 42px; }
+.slot.pending { color: var(--muted); }
 .slot .bar { width: 4px; align-self: stretch; border-radius: 2px; background: var(--g, var(--line)); flex: none; }
+.slot.pending .bar { background: var(--line); }
 .slot .who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .slot .who b { font-weight: 600; overflow-wrap: anywhere; }
 .slot .who span { font-size: 11px; color: var(--muted); letter-spacing: .02em; }
@@ -168,6 +170,7 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
       <h2>Group results</h2>
       <p class="hint">Ranked by points, then highest score, then bonus points. If teams are still tied, list order decides.</p>
     </div>
+    <p class="hint" id="data-status" role="status">Loading standings…</p>
     <div class="groups" id="groups"></div>
   </section>
 
@@ -186,41 +189,38 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   const G = ["A", "B", "C"];
   const POS = ["1st", "2nd", "3rd", "4th"];
   // =====================================================================
-  //  GROUP DATA - edit these numbers to update the tables.
-  //  Columns: [ "Team", Points, Highest Score, Bonus Points ]
-  //  Row order does not matter; the page ranks teams automatically.
+  //  CUP + GROUPS - points come live from /api/standings (Neon).
+  //  Groups list team ids from the `teams` table (to move into the DB later).
+  //  Order inside a group only matters to break full ties.
   // =====================================================================
-  const DATA = {
-    A: [
-      ["Los Repas",            0, 0, 0],
-      ["El Narra",             0, 0, 0],
-      ["Kingsbury Albion",     0, 0, 0],
-      ["FC José Marti",        0, 0, 0],
-    ],
-    B: [
-      ["Real Banquillo C.F.",  0, 0, 0],
-      ["El_Pantano913",        0, 0, 0],
-      ["Versalles Vendeta FC", 0, 0, 0],
-      ["Lo Astros de Houston", 0, 0, 0],
-    ],
-    C: [
-      ["PapiBoris FC",         0, 0, 0],
-      ["Catenaccio Haram FC",  0, 0, 0],
-      ["AFC Richmond 305",     0, 0, 0],
-      ["MeetYourDaddy",        0, 0, 0],
-    ],
+  const CUP_ID = 1;
+  const GROUPS = {
+    A: [1, 5, 2, 12],   // Los Repas, El Narra, Kingsbury Albion, FC José Marti
+    B: [4, 8, 9, 10],   // Real Banquillo C.F., El_Pantano913, Versalles Vendeta FC, Lo Astros de Houston
+    C: [11, 7, 6, 3],   // PapiBoris FC, Catenaccio Haram FC, AFC Richmond, MeetYourDaddy
   };
   // =====================================================================
 
-  const KEY = "friends-cup-knockout-v4"; // only bracket picks are saved per browser
-  const groups = {};
-  G.forEach(g => groups[g] = DATA[g].map(([name, pts, hs, bp]) => ({ name, pts, hs, bp })));
+  // =====================================================================
+  //  KNOCKOUT STATUS - placeholders until these come from the database.
+  //  GROUP_STAGE_DONE: false greys out the quarterfinal teams (not confirmed yet).
+  //  RESULTS: winner of each match by exact team name, or null if not played.
+  // =====================================================================
+  const GROUP_STAGE_DONE = false;
+  const RESULTS = { qf1: null, qf2: null, qf3: null, qf4: null, sf1: null, sf2: null, final: null };
+  // =====================================================================
 
-  let state;
-  try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
-  if (!state || typeof state !== "object") state = {};
-  state = { picks: state.picks || {}, groups };
-  function save() { try { localStorage.setItem(KEY, JSON.stringify({ picks: state.picks })); } catch (e) {} }
+  // Until data arrives, show each group's team ids with zeros.
+  const toGroups = byId => {
+    const out = {};
+    G.forEach(g => out[g] = GROUPS[g].map(id => {
+      const t = byId[id];
+      return { name: t ? t.name : `Team ${id}`, pts: t ? t.points : 0, hs: t ? t.high : 0, bp: t ? t.bonus : 0 };
+    }));
+    return out;
+  };
+  const state = { groups: toGroups({}) };
+  const statusEl = document.getElementById("data-status");
 
   const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
   const cmp = (a, b) => (num(b.pts) - num(a.pts)) || (num(b.hs) - num(a.hs)) || (num(b.bp) - num(a.bp));
@@ -284,20 +284,17 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   const keyOf = p => p ? `${p.group}${p.pos}` : null;
 
   function slotHTML(m, side, p) {
-    if (!p) return `<button class="slot" type="button" disabled><span class="bar"></span><span class="who"><b>Winner of ${m.from[side]}</b><span>to be decided</span></span></button>`;
-    const pick = state.picks[m.id];
-    const cls = pick ? (pick === keyOf(p) ? "won" : "lost") : "";
-    const ready = m.a && m.b;
-    return `<button class="slot g-${p.group} ${cls}" type="button" data-m="${m.id}" data-k="${keyOf(p)}" ${ready ? "" : "disabled"}
-      aria-pressed="${pick === keyOf(p)}"><span class="bar"></span>
-      <span class="who"><b>${esc(p.label)}</b><span>${POS[p.pos]} · Group ${p.group}</span></span><span class="check">✓</span></button>`;
+    if (!p) return `<div class="slot pending"><span class="bar"></span><span class="who"><b>Winner of ${m.from[side]}</b><span>to be decided</span></span></div>`;
+    const res = m.winner ? (m.winner === p ? "won" : "lost") : "";
+    const pending = m.pending ? "pending" : "";
+    return `<div class="slot g-${p.group} ${res} ${pending}"><span class="bar"></span>
+      <span class="who"><b>${esc(p.label)}</b><span>${POS[p.pos]} · Group ${p.group}${m.pending ? " · not confirmed" : ""}</span></span><span class="check">✓</span></div>`;
   }
   function matchHTML(m, title) {
     return `<div class="match"><div class="match-id"><span>${title}</span></div>${slotHTML(m, 0, m.a)}${slotHTML(m, 1, m.b)}</div>`;
   }
 
   function render() {
-    save();
     const d = draw();
     const inBracket = new Set(d.qf.flatMap(m => [keyOf(m.a), keyOf(m.b)]));
 
@@ -326,23 +323,20 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
       </tr>`).join("");
 
     // bracket progression
-    const all = {};
-    d.qf.forEach(m => { all[keyOf(m.a)] = m.a; all[keyOf(m.b)] = m.b; });
+    // Winners come from RESULTS (by team name); only counted once the match is set.
     const winnerOf = m => {
-      const k = state.picks[m.id];
-      if (!m.a || !m.b) { delete state.picks[m.id]; return null; }
-      if (k !== keyOf(m.a) && k !== keyOf(m.b)) { delete state.picks[m.id]; return null; }
-      return all[k];
+      const name = RESULTS[m.id];
+      if (!name || !m.a || !m.b || m.pending) return null;
+      return [m.a, m.b].find(p => p.label === name) || null;
     };
-    d.qf.forEach(m => m.from = ["", ""]);
-    const w = d.qf.map(winnerOf);
+    d.qf.forEach(m => { m.from = ["", ""]; m.pending = !GROUP_STAGE_DONE; m.winner = winnerOf(m); });
+    const w = d.qf.map(m => m.winner);
     const sf1 = { id: "sf1", a: w[0], b: w[1], from: ["QF1", "QF2"] };
     const sf2 = { id: "sf2", a: w[2], b: w[3], from: ["QF3", "QF4"] };
-    const fin = { id: "final", a: winnerOf(sf1), b: winnerOf(sf2), from: ["SF1", "SF2"] };
-    const champ = winnerOf(fin);
-    save();
+    sf1.winner = winnerOf(sf1); sf2.winner = winnerOf(sf2);
+    const fin = { id: "final", a: sf1.winner, b: sf2.winner, from: ["SF1", "SF2"] };
+    const champ = fin.winner = winnerOf(fin);
 
-    const titles = ["QF1", "QF2", "QF3", "QF4"];
     document.getElementById("board").innerHTML = `
       <div class="col"><div class="col-head">Quarterfinals</div><div class="col-body">
         <div class="half-label">Top half</div>${matchHTML(d.qf[0], "QF1")}${matchHTML(d.qf[1], "QF2")}
@@ -353,21 +347,30 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
       </div></div>
       <div class="col"><div class="col-head">Final</div><div class="col-body">${matchHTML(fin, "Final")}</div></div>
       <div class="col"><div class="col-head">Champion</div><div class="col-body">
-        <div class="champ ${champ ? "" : "empty"}"><div class="lbl">${champ ? `Group ${champ.group} · ${POS[champ.pos]}` : "Pick the final winner"}</div>
+        <div class="champ ${champ ? "" : "empty"}"><div class="lbl">${champ ? `Group ${champ.group} · ${POS[champ.pos]}` : "To be decided"}</div>
         <div class="nm">${champ ? esc(champ.label) : "?"}</div></div>
       </div></div>`;
 
   }
 
-  document.getElementById("board").addEventListener("click", e => {
-    const b = e.target.closest(".slot[data-m]"); if (!b || b.disabled) return;
-    const id = b.dataset.m, k = b.dataset.k;
-    state.picks[id] = state.picks[id] === k ? undefined : k;
-    if (!state.picks[id]) delete state.picks[id];
-    render();
-  });
+  async function load() {
+    try {
+      const r = await fetch(`/api/standings?cup=${CUP_ID}`, { headers: { accept: "application/json" } });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      const byId = {};
+      data.teams.forEach(t => byId[t.id] = t);
+      state.groups = toGroups(byId);
+      const c = data.cup;
+      statusEl.textContent = `${c.name} · group phase: game weeks ${c.gwFrom}–${c.gwTo}`;
+      render();
+    } catch (e) {
+      statusEl.textContent = `Couldn't load standings (${e.message}). Showing zeros.`;
+    }
+  }
 
   render();
+  load();
 })();
 </script>
 </body>

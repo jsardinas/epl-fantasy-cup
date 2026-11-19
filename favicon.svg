@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4a0d63"/>
+      <stop offset="1" stop-color="#2a0638"/>
+    </linearGradient>
+    <linearGradient id="cup" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2ef0a0"/>
+      <stop offset="1" stop-color="#1fc8ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- handles -->
+  <path d="M18 16 H11 a7 7 0 0 0 9 11" fill="none" stroke="url(#cup)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M46 16 H53 a7 7 0 0 1 -9 11" fill="none" stroke="url(#cup)" stroke-width="4" stroke-linecap="round"/>
+  <!-- bowl, stem, base -->
+  <path d="M17 11 H47 V24 a15 15 0 0 1 -30 0 Z" fill="url(#cup)"/>
+  <rect x="28.5" y="38" width="7" height="8" fill="url(#cup)"/>
+  <rect x="21" y="45" width="22" height="5" rx="2" fill="url(#cup)"/>
+  <rect x="18" y="50" width="28" height="5" rx="2.5" fill="url(#cup)"/>
+  <!-- star -->
+  <path d="M32 15.5 l2.6 5.3 5.8 .8 -4.2 4.1 1 5.8 -5.2 -2.7 -5.2 2.7 1 -5.8 -4.2 -4.1 5.8 -.8 Z" fill="#ff2d7a"/>
+</svg>
