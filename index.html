@@ -250,7 +250,7 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   // The bracket rules need exactly groups A, B and C with 4 teams each.
   const validGroups = groups => !!groups &&
     Object.keys(groups).sort().join() === G.join() && G.every(g => groups[g].length === 4);
-  const state = { groups: null, ko: { rounds: {}, points: {} }, groupDone: false };
+  const state = { groups: null, ko: { rounds: {}, points: {}, bonus: {} }, groupDone: false };
   const statusEl = document.getElementById("data-status");
 
   const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
@@ -339,13 +339,14 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   function teamRound(m, p) {
     const weeks = roundWeeks(m);
     const pts = p ? (state.ko.points[p.id] || {}) : {};
+    const bon = p ? ((state.ko.bonus || {})[p.id] || {}) : {};
     const vals = weeks.map(gw => pts[gw]);
     const have = vals.filter(v => v != null);
     return {
       vals,
       total: have.reduce((s, v) => s + v, 0),
       high: have.length ? Math.max(...have) : 0,
-      bonus: 0, // knockout bonus points are not stored yet
+      bonus: weeks.reduce((s, gw) => s + (bon[gw] || 0), 0),
       any: have.length > 0,
       complete: weeks.length > 0 && have.length === weeks.length,
     };
@@ -399,7 +400,7 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
 
     // bracket progression
     // A match is decided once both teams have points for every game week of its round:
-    // higher total wins, then highest single game week, then bonus points (0 until stored).
+    // higher total wins, then highest single game week, then bonus points.
     // A name in RESULTS overrides this (e.g. to settle a full tie by hand).
     const winnerOf = m => {
       m.tied = false;
