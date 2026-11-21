@@ -353,7 +353,8 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
   }
   function scoresHTML(m, p) {
     const r = teamRound(m, p);
-    const legs = r.vals.map(v => `<span class="leg">${v != null ? v : "–"}</span>`).join("");
+    // A one-game-week round (usually the final) only needs the total.
+    const legs = r.vals.length > 1 ? r.vals.map(v => `<span class="leg">${v != null ? v : "–"}</span>`).join("") : "";
     return `<span class="score">${legs}<span class="tot">${r.any ? r.total : "–"}</span></span>`;
   }
 
@@ -365,9 +366,12 @@ input:focus { border-color: var(--accent); outline: none; background: var(--bg);
       <span class="who"><b>${esc(p.label)}${honorsHTML(p)}</b><span>${POS[p.pos]} · Group ${p.group}${m.pending ? " · not confirmed" : ""}</span></span>${scoresHTML(m, p)}</div>`;
   }
   function matchHTML(m, title) {
-    const gwHead = roundWeeks(m).map(gw => `<span class="leg">GW${gw}</span>`).join("");
+    const weeks = roundWeeks(m);
+    const single = weeks.length === 1;
+    const gwHead = single ? "" : weeks.map(gw => `<span class="leg">GW${gw}</span>`).join("");
+    const totHead = single ? `GW${weeks[0]}` : "Total";
     const tie = m.tied ? ` <span class="tag tie" title="Level on total, highest game week and bonus. Set the winner in RESULTS.">tied</span>` : "";
-    return `<div class="match"><div class="match-id"><span>${title}${tie}</span><span class="score">${gwHead}<span class="tot">Total</span></span></div>${slotHTML(m, 0, m.a)}${slotHTML(m, 1, m.b)}</div>`;
+    return `<div class="match"><div class="match-id"><span>${title}${tie}</span><span class="score">${gwHead}<span class="tot">${totHead}</span></span></div>${slotHTML(m, 0, m.a)}${slotHTML(m, 1, m.b)}</div>`;
   }
 
   function render() {
